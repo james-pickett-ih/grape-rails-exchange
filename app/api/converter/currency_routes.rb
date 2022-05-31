@@ -13,6 +13,17 @@ module Converter
                     raise StandardError.new "No conversion found"
                 end
             end
+
+            def permitted_params
+                @permitted_params ||= declared(params, include_missing: false)
+            end
+
+            params :currency_params do
+                requires :decimals, type: Integer, desc: 'How many decimal places including the leading number'
+                requires :symbol, type: String, desc: 'Symbol of currency'
+                requires :desc, type: String, desc: 'Description of currency'
+                requires :conversion, type: Float, desc: 'Conversion amount of currency to USD'
+            end
         end
 
         resource :currencies do
@@ -37,12 +48,30 @@ module Converter
                 }
             end
                 
+            desc 'Create a Currency in the db'
+            params do
+                use :currency_params
+            end
             post :create do
-                obj = Currency.create!(amount: params['amount'], decimals: params['decimals'], symbol: params['symbol'], desc: params['desc'], conversion: params['conversion'])
+                binding.pry
+                obj = Currency.create!(permitted_params)
                 {
                     created: obj
                 }
             end
+
+            desc 'Update a Currency in the db'
+            params do
+                requires :id, type: Integer, desc: 'Currency ID'
+                use :currency_params
+            end
+            put ':id' do
+                currency = Currency.find(permitted_params[:id])
+                currency.update_attributes!(permitted_params)
+                {
+                    updated: currency
+                }
+            end            
 
             post :exchange do
                 to_currency = params['to_currency']
